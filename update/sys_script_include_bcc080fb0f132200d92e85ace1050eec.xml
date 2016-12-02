@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_44552_pdf.GeneralPDFForm</api_name>
+        <client_callable>false</client_callable>
+        <description>tableId : doc_id of the record which gonna be use as a source to generate the template&#13;
+tableName: Name of the table from which the PDF has been generated&#13;
+targetTable:&#13;
+targetId:</description>
+        <name>GeneralPDFForm</name>
+        <script><![CDATA[/**
+ * GeneralHRForm would be to extend GeneralForm and then override all of the methods in the extension.
+ *
+ * @author SERVICE-NOW\Cailiang.Xu
+ */
+var GeneralPDFForm = Class.create();
+
+/**
+ * Utility to create a PDF for the form
+ * @param table, table id, target table, target id
+ */
+GeneralPDFForm.generate = function(name, sys_id, targetTable, targetId) {
+	var generalPDFForm = new global.GeneralHRForm({
+		tableId : (sys_id) ? sys_id : null,
+		tableName : name,
+		targetTable : targetTable,
+		targetId : targetId,
+		generalDebug : null,
+		mode : 'pdf'
+	});
+	
+	generalPDFForm.start();
+	generalPDFForm.createPDF();
+	
+};
+
+var generalPDFForm = {
+	initialize : function() {
+		
+		global.GeneralForm.prototype.initialize.apply(this, arguments);
+		
+		this.templateTableName = "x_44552_pdf_template";
+		this.templateSysId = this.template;
+		
+		var instance = gs.getProperty('glide.servlet.uri');
+		this._getTemplateInfo(this.templateTableName, this.templateSysId, instance);
+	},
+	
+	_getDocumentBody : function(){
+		try{
+			var propertyName = 'com.snc.hr.core.document';
+			var signature = this._get_signature();
+			var instance = gs.getProperty('glide.servlet.uri');
+			
+			var gr = new GlideRecord("draft_document");
+			gr.addQuery('table', this.tableName);
+			gr.addQuery('document', this.tableId);
+			gr.addQuery('user', gs.getUserID());
+			gr.addActiveQuery();
+			gr.query();
+			
+			if(gr.next()){
+				var parsedBody = gr.body + '';
+				
+				if (parsedBody.length < 1)   // The saved template body should not be empty.
+					return '';
+				
+				// after previewing, the signature would be added to the document
+				if(signature){
+					
+					parsedBody = parsedBody.replace(/\{\{Signature\}\}/gi, signature);
+					var date = gs.now();
+					parsedBody = parsedBody.replace(/\{\{Date\}\}/gi, date);
+					
+					// convert to the right image path
+					parsedBody = parsedBody.replace(/\/sys_attachment.do\?sys_id=(\w{32})/gi, '/$1.iix');
+					parsedBody = parsedBody.replace(/\/sys_attachment.do\?sys_id&#61;(\w{32})/gi, '/$1.iix');
+					parsedBody = parsedBody.replace(/src="\//gi, 'src="' + instance);
+				}
+				
+				return parsedBody;
+			}else{
+				return '';
+			}
+		}catch(exception){
+			return exception;
+		}
+	},
+	
+	_getTemplateSysId : function(HRCaseId){
+		try{
+			var gr = new GlideRecord(this.tableName);
+			gr.get(this.tableId);
+			
+			if (this.tableName == hr.TABLE_CASE || this.tableName == hr.TABLE_CASE_WORKFORCE)
+				return gr.pdf_template + '';
+			else
+				return gr.parent.pdf_template + '';
+		}catch(exception){
+			return "Exception " + exception;
+		}
+		
+	},
+	
+	_getTemplateInfo : function(templateTableName, templateSysId, instance){
+		try{
+			var hrCategory;
+			var gr = new GlideRecord(templateTableName);
+			
+			if (gr.get(templateSysId)){
+				
+				// 			this.headerImage = gr.header.getDisplayValue() ? instance + gr.header.getDisplayValue() : '';
+				// 			this.footerImage = gr.footer.getDisplayValue() ? instance + gr.footer.getDisplayValue() : '';
+				// 			this.footnote    = gr.footnote + '';
+				// 			this.headerPosition = gr.header_position + '';
+				// 			this.footerPosition = gr.footer_position + '';
+				// 			this.pageSize       = gr.page_size  + '';
+				this.body = this._getSections(templateSysId);
+			}
+		}catch(exception){
+			gs.error("Exception " + exception);
+		}
+	},
+	
+	_getSections: function(templateId){
+		try{
+			var body = " ";
+			var section = new GlideRecord("x_44552_pdf_section");
+			section.addQuery("template", templateId);
+			section.orderBy("order");
+			section.query();
+			
+			while(section.next()){
+				body += this._parseBody(section);
+			}
+			
+			return body;
+		}catch(exception){
+			return exception;
+		}
+	},
+	
+	_parseBody : function(section){
+		try{
+			var parsedBody = section.text;
+			
+			var record = new GlideRecord(this.tableName);
+			if(!record.get(this.tableId)){
+				return "Cannot find sys_id " + this.tableId;
+			}
+			
+			if(!GlideFilter.checkRecord(record, section.condition)){
+				return "";
+			}
+			
+			// parsing of variables dynamically
+			var sampleString = parsedBody.toString();
+			var reg = new RegExp('\\$\\{(.*?)\\}');
+			
+			var match = reg.exec(sampleString);
+			
+			while (match != null) {
+				var field = match.toString().substring(match.toString().indexOf(',')+1);
+				var value = record.getDisplayValue(field);
+				
+				parsedBody = sampleString.toString().replace("${" + field + "}", value);
+				sampleString= parsedBody;
+				match = reg.exec(sampleString);
+			}
+			
+			return parsedBody ;
+		}catch(exception){
+			return exception;
+		}
+	},
+	
+	_getOfferDetails: function(offerField,appSysId){
+		var grOffer = new GlideRecord('hr_offer_details');
+		grOffer.addQuery('hr_application',appSysId);
+		grOffer.addActiveQuery();
+		grOffer.query();
+		if(grOffer.next())
+			return grOffer.getValue(offerField);
+		
+	},
+	
+	getAddress: function(app){
+		return app.hr_job_applicant.address+"<br>"+app.hr_job_applicant.city + this._getState(app) + "<br>"+ this._get_country(app.hr_job_applicant.country)+" "+ app.hr_job_applicant.zip;
+	},
+	
+	_getState: function(app){
+		var state = app.hr_job_applicant.state;
+		if(JSUtil.nil(state))
+			return "";
+		else
+			return ", "+state;
+	},
+	
+	_get_country : function(countryId){
+		var country = new GlideRecord('core_country');
+		country.get(countryId);
+		return country.getDisplayValue();
+	},
+	
+	_get_position : function(manager){
+		var user = new GlideRecord("sys_user");
+		user.get(manager);
+		return user.getDisplayValue('title');
+	},
+	
+	_get_user_name : function(user_id){
+		var user = new GlideRecord('sys_user');
+		user.get('user_name',user_id);
+		return user.getDisplayValue('name');
+	},
+	
+	_get_user : function(sys_id){
+		var user = new GlideRecord('sys_user');
+		user.get(sys_id);
+		return user.getDisplayValue('name');
+	},
+	
+	_get_signature : function(){
+		var gr = new GlideRecord('signature_image');
+		gr.addQuery('user', gs.getUserID());
+		gr.addQuery('table', this.tableName);
+		gr.addQuery('document', this.tableId);
+		gr.orderByDesc('sys_created_on');
+		
+		gr.addActiveQuery();
+		gr.query();
+		if (gr.next()){
+			if (!gr.is_drawing)
+				return gr.signed_name + '';
+			else{
+				var image_id = this._get_attachment(gr.sys_id);
+				if (image_id)
+					return gs.getMessage('<img src="/sys_attachment.do?sys_id={0}" height="40px" />', image_id);
+			}
+		}
+		
+		return '';
+	},
+	
+	
+	_get_attachment : function(id){
+		var gr = new GlideRecord('sys_attachment');
+		gr.addQuery('table_name', 'signature_image');
+		gr.addQuery('table_sys_id', id);
+		gr.query();
+		
+		if (gr.next())
+			return gr.sys_id;
+		else return '';
+		},
+	
+	_cleanUpDraftDocument : function(){
+		var gr =  new GlideRecord("draft_document");
+		gr.addQuery('table', this.tableName);
+		gr.addQuery('document', this.tableId);
+		gr.addQuery();
+		
+		gr.deleteMultiple();
+	},
+	
+	_setDocument : function() {
+		if (this.setDocument) {
+			this.setDocument();
+		} else {
+			
+			// This object allows us to control the properties for the Document,
+			// size, margins etc.
+			var pdfDoc = new GeneralPDF.Document(null, null, null, null, this.pageSize, this.headerImage);
+			//
+			// When possible all changes to the PDF Document objects
+			// should be done here, outside of the base object.
+			// Anything along the lines of properties on the PDF Document
+			// object.
+			//
+			// Set page size
+			// pdfDoc.setPageSize();
+			//
+			// Set rotation (landscape/portrait)
+			// pdfDoc.setRotation();
+			//
+			// Set author
+			// pdfDoc.setAuthor();
+			//
+			// Set margins
+			// pdfDoc.setMargins();
+			
+			// This object contains many options for creating PDFs in different ways.
+			this.document = new GeneralPDF(pdfDoc);
+			
+			// When possible all changes to the PDF Document object
+			// should be done here, outside of the base object.
+			//
+			// Examples include setting things here such as page break events,
+			// header, footer, styleSheets. Anything along the lines of
+			// writing the PDF file.
+			//
+			// Set page break events
+			//this.document.setPageBreakEvent();
+			//
+			
+			// set header, footer, footnote, header position, footer position, page size
+			this.document.setDocTempleInfo(this.headerImage, this.footerImage, this.footnote, this.headerPosition, this.footerPosition, this.pageSize);
+			
+			// Set iTextPdf CSS StyleSheet
+			// this.document.setStyleSheet();
+			
+			// Creates a new document open for writing then we will parse HTML
+			// and add it to the document. This allows us to control things such
+			// as
+			// page break based on a certain GeneralFormDemoElement type as one
+			// example.
+			// It also helps improve PDF creation performance because small
+			// blocks
+			// of HTML tables are added for each element in the form versus
+			// creating
+			// a single huge table and adding that to the document one time.
+			this.document.startHTMLParser();
+			
+			this.document.addHTML(this.body);
+			
+			this.debug.write();
+			
+			// clean up the draft document
+			this._cleanUpDraftDocument();
+		}
+	},
+	
+	
+	
+	type : 'GeneralPDFForm'
+};
+GeneralPDFForm.prototype = Object.extendsObject(global.GeneralForm, generalPDFForm);]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2016-12-01 16:14:06</sys_created_on>
+        <sys_customer_update>true</sys_customer_update>
+        <sys_id>bcc080fb0f132200d92e85ace1050eec</sys_id>
+        <sys_mod_count>40</sys_mod_count>
+        <sys_name>GeneralPDFForm</sys_name>
+        <sys_package display_value="PDF" source="x_44552_pdf">a1f73fa70f132200d92e85ace1050e07</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_replace_on_upgrade>false</sys_replace_on_upgrade>
+        <sys_scope display_value="PDF">a1f73fa70f132200d92e85ace1050e07</sys_scope>
+        <sys_update_name>sys_script_include_bcc080fb0f132200d92e85ace1050eec</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2016-12-02 10:44:02</sys_updated_on>
+    </sys_script_include>
+</record_update>

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<record_update table="sys_ui_page">
+    <sys_ui_page action="INSERT_OR_UPDATE">
+        <category>general</category>
+        <client_script><![CDATA[addLoadEvent(function(){
+	loadDocument();
+});
+
+function loadDocument(){
+	setInformation("Loading document...");
+	if (!gel('doc_template').value
+		|| !gel('task_table').value
+		|| !gel('task_sys_id').value)
+	{
+		setInformation('The category or its corresponding PDF template is empty');
+		return;
+	}
+	setInformation("You have selected template " + gel('doc_template').value);
+	var ga = new GlideAjax("x_44552_pdf.GetPdfContent");
+	
+	ga.addParam("sysparm_name", "getDocumentBody");
+	ga.addParam("sysparm_template", gel('doc_template').value);
+	ga.addParam("sysparm_tableName", gel('task_table').value);
+	ga.addParam("sysparm_tableId", gel('task_sys_id').value);
+	ga.addParam("sysparm_category", gel('task_category').value);
+	ga.addParam("sysparm_targetTable", gel('target_table').value);
+	ga.addParam("sysparm_targetId", gel('target_Id').value);
+	
+	ga.getXMLAnswer(function(answer) {
+		var result = JSON.parse(answer);
+		console.log(answer);
+		if(JSON.parse(result.success)){
+			gel('content_id').innerHTML = result.content;
+			gel('content_id').focus();
+		}
+		
+		if (answer == '')
+			gel('info_message').style.display = "block";
+	});
+}
+
+function setInformation(message){
+	if(message != undefined){
+		gel("info_message").innerHTML = message;
+		gel('info_message').style.display = "block";
+	}else{
+		gel('info_message').style.display = "none";
+	}
+}
+
+function disableOrEnableButton(){
+	if(gel('content_id').innerHTML.trim().length){
+		gel('save_button').disabled = false;
+		gel('ok_button').disabled = false;
+	}else{
+		gel('save_button').disabled = true;
+		gel('ok_button').disabled = true;
+	}
+	
+}
+function submitCancel() {
+	gel('info_message').style.display = "none";
+	GlideDialogWindow.get().destroy();
+	return false;
+}
+
+function submitSave() {
+	setDocument();
+	gel('info_message').style.color = "#4BD762";
+	gel('info_message').innerHTML = getMessage('The document body has been saved');
+	gel('info_message').style.display = "block";
+	
+	return false;
+}
+
+function submitOk() {
+	if (gel('content_id').innerHTML){
+		gel('info_message').style.display = "none";
+		
+		var gDialog = new GlideModal('accept_signature');
+		gDialog.setTitle(new GwtMessage().getMessage('Please sign document'));
+		gDialog.setWidth("500");
+		gDialog.setPreference('sysparm_document_id', gel('task_sys_id').value);
+		gDialog.setPreference('sysparm_table_name', gel('task_table').value);
+		gDialog.setPreference('sysparm_draw_only', 'true');
+		gDialog.render();
+		
+		setDocument();
+	}else{
+		gel('info_message').style.color = "#FF402C";
+		gel('info_message').innerHTML = getMessage('The document body should not be empty');
+		gel('info_message').style.display = "block";
+	}
+	return false;
+}
+
+function setDocument(){
+	var ga = new GlideAjax("hr_CaseAjax");
+	
+	ga.addParam("sysparm_name", "setDocumentBody");
+	ga.addParam("sysparm_documentBody", gel('content_id').innerHTML);
+	ga.addParam("sysparm_table_name", gel('task_table').value);
+	ga.addParam("sysparm_table_id", gel('task_sys_id').value);
+	ga.addParam("sysparm_targetTable", gel('target_table').value);
+	ga.addParam("sysparm_targetId", gel('target_Id').value);
+	ga.getXMLAnswer(function(answer) {
+	});
+}]]></client_script>
+        <description>Editable document before generating the final PDF document.</description>
+        <direct>false</direct>
+        <endpoint>x_44552_pdf_Preview PDF document dialog.do</endpoint>
+        <html><![CDATA[<?xml version="1.0" encoding="utf-8" ?>
+<j:jelly trim="false" xmlns:j="jelly:core" xmlns:g="glide" xmlns:j2="null" xmlns:g2="null">
+	<g:requires name="styles/heisenberg/heisenberg_all.css" includes="true" />
+<g:ui_form id="Preview document">
+	<style type="text/css">
+		#info_message {
+			position: absolute;
+			vertical-align:bottom;
+			left:20px;
+			font-style: italic;
+			display: none;
+		}
+	</style>	
+	<g2:evaluate var="jvar_sysId" expression="RP.getParameterValue('sysparm_sysId')" />
+	<g2:evaluate var="jvar_tableName" expression="RP.getParameterValue('sysparm_tableName')" />
+	<g2:evaluate var="jvar_category" expression="RP.getParameterValue('sysparm_category')" />
+	<g2:evaluate var="jvar_targetTable" expression="RP.getParameterValue('sysparm_targetTable')" />
+	<g2:evaluate var="jvar_targetId" expression="RP.getParameterValue('sysparm_targetId')" />	
+	
+	<!-- <g2:evaluate var="jvar_content">
+		var gr = new GlideRecord('$[jvar_tableName]');
+		gr.get('$[jvar_sysId]');
+		var content = gr.pdf_template.body;	
+		content;
+	</g2:evaluate> -->
+	<div class="form-group">
+		<label>Doc Template</label>
+		<g:ui_reference id="doc_template"
+						name="doc_template"
+						table="x_44552_pdf_template"
+						query="QUERY:table.name=${sysparm_tableName}"
+						class="form-control"
+						onChange="loadDocument()"/>
+	</div>
+	<div style="display:none">
+		<div class="form-group">
+			<label>Sys Id</label>
+			<input type="text" id="task_sys_id" name="task_sys_id" value="${sysparm_sysId}" class="form-control"/>
+		</div>
+		<div class="form-group">
+			<label>Table Name</label>
+			<input type="text" id="task_table" name="task_table" value="${sysparm_tableName}" class="form-control"/>
+		</div>
+		<div class="form-group">
+			<label>Category</label>
+			<input type="text" id="task_category" name="task_category" value="${sysparm_category}" class="form-control"/>
+		</div>
+		<div class="form-group">
+			<label>Target Table</label>
+			<input type="text" id="target_table" name="target_table" value="${sysparm_targetTable}" class="form-control"/>
+		</div>
+		<div class="form-group">
+			<label>Target Id</label>
+			<input type="text" id="target_Id" name="target_Id" value="${sysparm_targetId}" class="form-control"/>	
+		</div>
+	</div>
+	<div contenteditable="true" id='content_id' onkeyup="disableOrEnableButton()"/>
+	<div id="dialog.info">
+		
+	</div>
+	<footer id="hr_dialog_footer" class="modal-footer">
+		<span id = 'info_message' ></span>
+		<button id="cancel_button" class="btn btn-default" onClick="return submitCancel();">
+			${gs.getMessage('Cancel')}
+		</button>
+		<button id="save_button" class="btn btn-primary" onClick="return submitSave();">
+			${gs.getMessage('Save')}
+		</button>		
+		<button id="ok_button" class="btn btn-primary" onClick="return submitOk();">
+			${gs.getMessage('Sign')}
+		</button>
+	</footer>	
+</g:ui_form>
+</j:jelly>]]></html>
+        <name>Preview PDF document dialog</name>
+        <processing_script/>
+        <sys_class_name>sys_ui_page</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2016-12-01 16:25:03</sys_created_on>
+        <sys_customer_update>true</sys_customer_update>
+        <sys_id>df1598330f532200d92e85ace1050e40</sys_id>
+        <sys_mod_count>28</sys_mod_count>
+        <sys_name>Preview PDF document dialog</sys_name>
+        <sys_package display_value="PDF" source="x_44552_pdf">a1f73fa70f132200d92e85ace1050e07</sys_package>
+        <sys_policy/>
+        <sys_replace_on_upgrade>false</sys_replace_on_upgrade>
+        <sys_scope display_value="PDF">a1f73fa70f132200d92e85ace1050e07</sys_scope>
+        <sys_update_name>sys_ui_page_df1598330f532200d92e85ace1050e40</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2016-12-02 09:57:10</sys_updated_on>
+    </sys_ui_page>
+</record_update>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<record_update>
+    <sys_documentation element="template" label="Template" language="en" table="x_44552_pdf_section">
+        <sys_documentation action="INSERT_OR_UPDATE">
+            <element>template</element>
+            <help/>
+            <hint/>
+            <label>Template</label>
+            <language>en</language>
+            <name>x_44552_pdf_section</name>
+            <plural>Templates</plural>
+            <sys_class_name>sys_documentation</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2016-12-01 14:36:54</sys_created_on>
+            <sys_customer_update>false</sys_customer_update>
+            <sys_id>0b5c776b0f132200d92e85ace1050edd</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>Template</sys_name>
+            <sys_package display_value="PDF" source="x_44552_pdf">a1f73fa70f132200d92e85ace1050e07</sys_package>
+            <sys_policy/>
+            <sys_replace_on_upgrade>false</sys_replace_on_upgrade>
+            <sys_scope display_value="PDF">a1f73fa70f132200d92e85ace1050e07</sys_scope>
+            <sys_update_name>sys_documentation_x_44552_pdf_section_template_en</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2016-12-01 14:36:54</sys_updated_on>
+            <url/>
+            <url_target/>
+        </sys_documentation>
+    </sys_documentation>
+</record_update>

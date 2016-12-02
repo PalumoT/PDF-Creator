@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<record_update table="sys_script_include">
+    <sys_script_include action="INSERT_OR_UPDATE">
+        <access>package_private</access>
+        <active>true</active>
+        <api_name>x_44552_pdf.GetPdfContent</api_name>
+        <client_callable>true</client_callable>
+        <description/>
+        <name>GetPdfContent</name>
+        <script><![CDATA[var GetPdfContent = Class.create();
+GetPdfContent.prototype = Object.extendsObject(global.AbstractAjaxProcessor, {
+	_success: false,
+	_message: " ",
+	_content: " ",	
+	
+	getDocumentBody : function() {
+			var result = {"content": this._content,
+						  "success": this._success,
+						  "message": this._message};
+		
+			var instance = gs.getProperty('glide.servlet.uri');
+			var template = this.getParameter('sysparm_template');
+			var tableName = this.getParameter('sysparm_tableName');
+			var tableId = this.getParameter('sysparm_tableId');
+			var targetTable = this.getParameter('sysparm_targetTable');
+			var targetId = this.getParameter('sysparm_targetId');
+			var category = this.getParameter('sysparm_category') + '';
+		
+			if(!tableName.trim()){
+				result.message = "Please provide a table";
+				return new global.JSON().encode(result);
+			}
+		
+			if(!template.trim()){
+				result.message = "Please provide a template";
+				return new global.JSON().encode(result);
+			}
+
+			var pdf = new GeneralPDFForm({tableName : tableName,
+											tableId : tableId,
+											targetTable : targetTable,
+											targetId : targetId,		
+											category : category,
+											template : template,
+											generalDebug : null,
+											mode : 'pdf' 
+										   });
+
+			result.content =  pdf.body;
+			result.success = true;
+			return new global.JSON().encode(result);
+	},
+	
+    type: 'GetPdfContent'
+});]]></script>
+        <sys_class_name>sys_script_include</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2016-12-01 15:04:09</sys_created_on>
+        <sys_customer_update>true</sys_customer_update>
+        <sys_id>3152ccbb0f132200d92e85ace1050e88</sys_id>
+        <sys_mod_count>20</sys_mod_count>
+        <sys_name>GetPdfContent</sys_name>
+        <sys_package display_value="PDF" source="x_44552_pdf">a1f73fa70f132200d92e85ace1050e07</sys_package>
+        <sys_policy>read</sys_policy>
+        <sys_replace_on_upgrade>false</sys_replace_on_upgrade>
+        <sys_scope display_value="PDF">a1f73fa70f132200d92e85ace1050e07</sys_scope>
+        <sys_update_name>sys_script_include_3152ccbb0f132200d92e85ace1050e88</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2016-12-01 17:46:43</sys_updated_on>
+    </sys_script_include>
+</record_update>

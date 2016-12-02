@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database>
+    <element label="PDF Document" max_length="40" name="x_44552_pdf_pdf_document" type="collection">
+        <element label="Body" max_length="10000" name="body" type="translated_html"/>
+        <element label="Footer" max_length="40" name="footer" type="string"/>
+        <element label="Header" max_length="40" name="header" type="string"/>
+        <element default="javascript:global.getNextObjNumberPadded();" label="Number" max_length="40" name="number" type="string"/>
+    </element>
+</database>
